@@ -12,8 +12,11 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langchain_groq import ChatGroq
 
 # User configuration
-USER = ''
-APP_PASSWORD = ''  # App password generated from Google
+USER = '' #gmail full IE: drlordbasil@gmail.com
+APP_PASSWORD = ''  # App password generated from Google(must set 2f auth + get create app/get the pass)
+Asssistant_persona = """
+<describe your assistant ho>
+"""
 IMAP_URL = 'imap.gmail.com'
 SMTP_URL = 'smtp.gmail.com'
 SMTP_PORT = 587
@@ -116,7 +119,7 @@ def handle_emails():
 
                         # Generate response using GROQ AI
                         system_prompt = "You are a helpful assistant named Chaos working for Anthony Snider. Respond informatively and courteously."
-                        user_prompt = f"ONLY RESPOND TO THIS EMAIL FOR ANTHONY SNIDER AND YOU ARENT THEIR ASSISTANT!:\n\n Email to Anthony Snider: \n\n{email_body} your reply as Anthony Snider's assistant replying to his emails:"
+                        user_prompt = f"ONLY RESPOND TO THIS EMAIL FOR ANTHONY SNIDER AND YOU ARENT THEIR ASSISTANT!:\n\n Email to {user} \n\n{email_body} your reply as Anthony Snider's assistant replying to his emails:"
                         response = chat_with_groq(system_prompt, user_prompt)
 
                         # Send the auto-reply
