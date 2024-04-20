@@ -11,10 +11,12 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
 - **Automated Appointment Creation for local windows calendar app or .ics file that gets created**: This creates an .isc file and opens it for you to confirm it on your local calendar.
 ## Prerequisites
 
-- Python 3.6 or higher
+- Python 3.11 or higher
 - IMAP access enabled in your Gmail settings
-- Appropriate credentials for Gmail API (OAuth tokens)
+- google app password
 - Install NLTK data: Run `nltk.download('stopwords')` and `nltk.download('punkt')`
+- groq api key
+- tbd
 
 ## Installation
 
@@ -23,7 +25,7 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
    git clone https://github.com/Drlordbasil/groq-gmail-assistant.git
    cd groq-gmail-assistant
    ```
-
+**TBD**
 2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
