@@ -29,11 +29,8 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
    pip install -r requirements.txt
    ```
 
-3. **Set up Gmail API**:
-   - Visit [Google Developers Console](https://console.developers.google.com/)
-   - Create a new project and enable the Gmail API.
-   - Create credentials (OAuth client ID) and download the `credentials.json` file.
-   - Place `credentials.json` in the project directory.
+3. **Set up Gmail**
+   - Go to account security section, create new app password after adding 2fa, email my assistant if you need help drlordbasil@gmail.com
 
 ## Configuration
 
