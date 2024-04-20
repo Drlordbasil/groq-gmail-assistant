@@ -8,7 +8,7 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
 - **Automatic Email Processing**: Fetches and processes emails from your Gmail account.
 - **AI-Driven Responses**: Uses NLTK and custom AI models for understanding content and generating replies.
 - **Email Interaction**: Can read from and send emails directly through Gmail using IMAP and SMTP.
-
+- **Automated Appointment Creation for local windows calendar app or .ics file that gets created**: This creates an .isc file and opens it for you to confirm it on your local calendar.
 ## Prerequisites
 
 - Python 3.6 or higher
