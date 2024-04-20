@@ -1,4 +1,4 @@
-
+https://youtu.be/TpBBstLW2uU?si=jdmzCQZZhOPiReVK
 # Groq Gmail Assistant
 
 The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail account by reading and responding to emails automatically. It leverages natural language processing and custom AI models to understand and generate email responses.
