@@ -46,7 +46,7 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
    export EMAIL_USER='your-gmail-address@gmail.com'
    export EMAIL_PASS='your-app-password'  # This is the 16-character app password generated from Google's security settings
    ```
-
+MAKE SURE TO ALSO CHANGE THE CONFIG WITHIN MAIN.PY! You can change entire system or just name/assistant name!
 ## Usage
 
 1. **Running the Script**:
