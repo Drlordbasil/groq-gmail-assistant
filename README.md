@@ -40,12 +40,6 @@ The Groq Gmail Assistant is an AI-driven tool that helps manage your Gmail accou
    - Enable IMAP in Gmail settings.
    - Allow "Less Secure Apps" if not using OAuth 2.0 (not recommended).
 
-2. **Environment Variables**:
-   Set the following environment variables:
-   ```bash
-   export EMAIL_USER='your-gmail-address@gmail.com'
-   export EMAIL_PASS='your-app-password'  # This is the 16-character app password generated from Google's security settings
-   ```
 MAKE SURE TO ALSO CHANGE THE CONFIG WITHIN MAIN.PY! You can change entire system or just name/assistant name!
 ## Usage
 
@@ -56,7 +50,7 @@ MAKE SURE TO ALSO CHANGE THE CONFIG WITHIN MAIN.PY! You can change entire system
 
 2. **Operation**:
    - The script will automatically connect to your Gmail via IMAP.
-   - Fetches new emails and uses the LangChain AI to generate and send responses.
+   - Fetches new emails and uses the LangChain Ollama based AI to generate and send responses by passing to groq based AI
 
 ## Contact
 
