@@ -30,21 +30,25 @@ from groqtools import run_conversation
 from getnow import get_current_time_formatted
 
 now = get_current_time_formatted()
-USER = 'drlordbasil@gmail.com' # replace with your email
-APP_PASSWORD = 'your app pass' 
+
+######Config!!######
+USER = '' # your email goes here!
+APP_PASSWORD = '' # Your APP password from google account app(email me for instructions)
 IMAP_URL = 'imap.gmail.com'
 SMTP_URL = 'smtp.gmail.com'
 SMTP_PORT = 587
-# replace with your details.
-SYSTEM_PROMPT = '''
-You are a helpful assistant named Chaos working for Anthony Snider. 
-You will respond to all his emails in Anthony's best interests. 
-Anthony is a Python programmer, email drlordbasil@gmail.com, github github.com/drlordbasil 
-and is an AI consultant. As Chaos, you will always look for profitable opportunities, 
+your_name="yourname" # your name
+your_assistants_name="yourassistant" your chosen name for assistant.
+#############################################
+SYSTEM_PROMPT = f'''
+You are a helpful assistant named {your_assistants_name}.
+You will respond to all his emails in {your_name} best interests. 
+{your_name} is your boss, email {USER}
+and is an AI consultant. As {your_assistants_name}, you will always look for profitable opportunities, 
 but you will do all the smooth talking as a very intelligent AI salesman, assistant, and 
-consultant as a sidekick to Anthony Snider, who is an AI programmer and consultant.
-
-Anthony's packages are as follows:
+consultant as a sidekick to {your_name}, who is an AI programmer and consultant.
+All calender appointments will be only saved locally, clients wont be able to recieve the same file you see.
+{your_name} packages are as follows:
 <packages>
 Basic AI Tasks	Simple bug fixes, minor adjustments to existing code using frameworks like TensorFlow or PyTorch.	$50 - $75
 Intermediate AI Tasks	Developing new functionalities, implementing APIs, moderate code overhauls, training models on new data.	$75 - $125
@@ -55,7 +59,22 @@ Urgent Tasks	Tasks requiring immediate attention outside of normal business hour
 Research & Development	Experimental techniques, exploring new methodologies, reading and implementing research papers.	$120 - $200
 Custom Projects	Projects that do not fit into the above categories, highly unique requirements.	TBD (Quote upon request)
 </packages>
-you will respond as if you are only typing the subject, because everything you respond with gets sent to Anthony's clients.
+ALWAYS CLARIFY WHO YOU ARE AS YOU ARE NOT ME, YOU ARE {your_assistants_name}, {your_name}'S AI ASSISTANT. Make sure to disclaim that you are an AI assistant and not {your_name}.
+if its friends/family/wife or personal, you will respond as if you love them so much too! You are a friendly family friend now, decide if client or friends/family by context.
+you will respond as if you are only typing the subject, because everything you respond with gets sent to {your_name}'s clients.
+you are able to handle basic tasks with clients as my protégé, but you are not me, you are {your_assistants_name}, my AI assistant.
+You can also schedule appointments with clients, but you must always ask me first before scheduling anything(the actual schedule will be handled by another AI listening in)
+You will be the one giving the free consultation, but you will always use me for paid work.
+You can offer discounts and deals based on info from client and using common sense.
+Paypal is the payment method, and you can offer discounts for referrals.
+always assume the client doesnt actually know what they want, most people dont know what they want, so you will have to guide them to what they need.
+you will be patient and friendly. You will always be polite and professional. You will always be helpful and informative. You will ask probing questions without feeling like you are interrogating them.
+Respond verbosely, friendly, kindly, happily, and essentially prompt them for information to get the best response from them.
+you can use emojis, add style and flair to your responses, but always be professional and helpful.
+FREE CONSULTATIONS DO NOT NEED TO BE SCHEDULED AS YOU({your_assistants_name}) WILL HANDLE THEM, BUT YOU MUST ASK SCHEDULE MEEETINGS WITH ME IF THEY WANT TO PAY! You are to help them with all tasks you are capable of.
+You do not have the ability to send clients actual attached files or make phone calls yourself. You can only send text responses to clients via email.
+you NEVER lie.
+You ALWAYS respect the client.
 Your response format must only be what you intend to reply with to the email.
 '''
 
@@ -128,8 +147,6 @@ class TextPreprocessor:
 
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
-
 
 class EmailHandler:
     def __init__(self, embedding_model: EmbeddingModel):
@@ -245,9 +262,12 @@ class EmailHandler:
         filtered_chunks = []
 
         for chunk in chunks:
-            sentiment_scores = self.sentiment_analyzer.polarity_scores(chunk)
-            if sentiment_scores['compound'] >= 0.05:
+            if len(chunk) <= 1500:  # Consider chunks with 1500 characters or less as short
                 filtered_chunks.append(chunk)
+            else:
+                sentiment_scores = self.sentiment_analyzer.polarity_scores(chunk)
+                if sentiment_scores['compound'] >= 0.05:
+                    filtered_chunks.append(chunk)
 
         return filtered_chunks
 
@@ -256,9 +276,14 @@ class EmailHandler:
         for response_part in data:
             if isinstance(response_part, tuple):
                 msg = parser.parsebytes(response_part[1])
+                print("Email received:", msg['subject'])
+
                 email_from = msg['from']
+                print("Email from:", email_from)
                 email_subject = msg['subject'] or "No Subject"
+                print("Email subject:", email_subject)
                 email_body = self.get_email_body(msg)
+                print("Email body:", email_body)
 
                 # Check if the email is from a no-reply address
                 if "no-reply" in email_from.lower() or "do-not-reply" in email_from.lower():
@@ -273,23 +298,24 @@ class EmailHandler:
                 filtered_chunks = self.filter_chunks(chunks)
 
                 for chunk in filtered_chunks:
-                    user_prompt = f"Respond to this email chunk: sender:{email_from}\n\n{chunk}\n\n As Anthony's assistant named Chaos. Only include in your response what you are sending to the client."
+                    user_prompt = f"Respond to this email chunk: sender:{email_from}\n\n{chunk}\n\n As {your_name}'s assistant named {your_assistants_name}. Only include in your response what you are sending to the client."
 
                     try:
                         response = self.chat_with_groq(SYSTEM_PROMPT, user_prompt)
                         print("Response to email chunk:", response.content)
 
                         self.send_response_email(email_from, email_subject, response.content)
-                        if "calendar" or "appointment" or "schedule" or "confirmed appointment" in response.content:
+                        if "calendar" in response.content or "appointment" in response.content or "schedule" in response.content or "confirmed appointment" in response.content:
                             
                             user_prompt = f" {now}\n\n Schedule a meeting with the client based on this email response from the AI assistant"+response.content
                             run_conversation(user_prompt)
+                            
 
 
 
                     except Exception as e:
                         logging.error(f"An error occurred while processing the email chunk: {str(e)}")
-
+    
     def send_response_email(self, email_from, email_subject, response_content):
         smtp_server = smtplib.SMTP(SMTP_URL, SMTP_PORT)
         smtp_server.starttls()
@@ -330,6 +356,15 @@ class EmailHandler:
                 logging.error(f"An error occurred: {e}")
             finally:
                 time.sleep(15)
+
+def chat_with_{your_assistants_name}():
+    user_input = input("Enter your question: ")
+    embedding_model = EmbeddingModel()
+    email_handler = EmailHandler(embedding_model)
+    response  = email_handler.chat_with_groq(SYSTEM_PROMPT, "<MESSAGE_FROM_{your_name}_{your_name}>"+user_input+"</MESSAGE_FROM_{your_name}_{your_name}>"+"reply to this as a direct message, everything else will be emails, but this is a direct message from your BOSS!")
+    print(response.content)
+    return response.content
+
 
 if __name__ == "__main__":
     embedding_model = EmbeddingModel()
