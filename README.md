@@ -1,3 +1,5 @@
+![image](https://github.com/Drlordbasil/groq-gmail-assistant/assets/126736516/f2b23158-79d9-4942-a578-21c2181fa78b)
+
 https://youtu.be/TpBBstLW2uU?si=jdmzCQZZhOPiReVK
 # Groq Gmail Assistant
 
