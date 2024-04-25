@@ -37,8 +37,8 @@ def read_notes():
 
 def create_calendar_appointment(subject, start_time, end_time, location, body):
     """Create an .ics file for an appointment and open it with the default calendar application."""
-    start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
-    end_time = datetime.datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+    start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+    end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
     
     # Format start and end times for iCalendar
     start_time_formatted = start_time.strftime('%Y%m%dT%H%M%S')
