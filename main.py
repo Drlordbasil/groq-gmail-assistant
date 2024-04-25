@@ -13,7 +13,7 @@ import re
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.sentiment import SentimentIntensityAnalyzer
+from transformers import pipeline
 import numpy as np
 
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -25,7 +25,6 @@ from getnow import get_current_time_formatted
 
 nltk.download('punkt')
 nltk.download('stopwords')
-nltk.download('vader_lexicon')
 
 now = get_current_time_formatted()
 
@@ -89,7 +88,7 @@ def cosine_similarity(a, b):
 class EmailHandler:
     def __init__(self, embedding_model: EmbeddingModel):
         self.embedding_model = embedding_model
-        self.sentiment_analyzer = SentimentIntensityAnalyzer()
+        self.sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
     def retrieve_relevant_messages(self, user_prompt, memory):
         embeddings = self.embedding_model.get_embeddings()
@@ -144,28 +143,18 @@ class EmailHandler:
         text = soup.get_text()
         return re.sub(r'\s+', ' ', text).strip()
 
-    def chunk_text(self, text, chunk_size=4096):
-        sentences = sent_tokenize(text)
-        chunks = []
-        current_chunk = ""
-
-        for sentence in sentences:
-            if len(current_chunk) + len(sentence) <= chunk_size:
-                current_chunk += sentence + " "
-            else:
-                chunks.append(current_chunk.strip())
-                current_chunk = sentence + " "
-
-        if current_chunk:
-            chunks.append(current_chunk.strip())
-
-        return chunks
+    def chunk_text(self, text):
+        return sent_tokenize(text)
 
     def filter_chunks(self, chunks):
-        return [
-            chunk for chunk in chunks
-            if len(chunk) <= 1500 or self.sentiment_analyzer.polarity_scores(chunk)['compound'] >= 0.05
-        ]
+        filtered_chunks = []
+
+        for chunk in chunks:
+            sentiment_result = self.sentiment_analyzer(chunk)[0]
+            if sentiment_result['score'] >= 0.5:
+                filtered_chunks.append(chunk)
+
+        return filtered_chunks
 
     def clean_email_body(self, email_body):
         lines = email_body.split("\n")
