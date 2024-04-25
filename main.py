@@ -13,7 +13,7 @@ import re
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
-from transformers import pipeline
+from nltk.sentiment import SentimentIntensityAnalyzer
 import numpy as np
 
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -22,9 +22,11 @@ import ollama
 from config import USER, APP_PASSWORD, IMAP_URL, SMTP_URL, SMTP_PORT, SYSTEM_PROMPT
 from groqtools import run_conversation
 from getnow import get_current_time_formatted
-
+from nltk.stem import WordNetLemmatizer
+nltk.download('wordnet')
 nltk.download('punkt')
 nltk.download('stopwords')
+nltk.download('vader_lexicon')
 
 now = get_current_time_formatted()
 
@@ -36,7 +38,7 @@ logging.basicConfig(filename='gmail_assistant.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 class EmbeddingModel:
-    def __init__(self, json_file_path: str = 'conversation_memory.json', model_name: str = 'mxbai-embed-large'):
+    def __init__(self, json_file_path: str = 'conversation_memory.json', model_name: str = 'snowflake-arctic-embed'):
         self.json_file_path = json_file_path
         self.model_name = model_name
 
@@ -77,10 +79,11 @@ class ChatGroqFactory:
         return ChatGroq(groq_api_key=GROQ_API_KEY, temperature=temperature, model_name=model_name)
 
 def preprocess_text(text: str) -> str:
+    lemmatizer = WordNetLemmatizer()
     tokens = word_tokenize(text)
     stop_words = set(stopwords.words('english'))
-    filtered_tokens = [token.lower() for token in tokens if token.lower() not in stop_words]
-    return ' '.join(filtered_tokens)
+    lemmatized_tokens = [lemmatizer.lemmatize(token.lower()) for token in tokens if token.lower() not in stop_words]
+    return ' '.join(lemmatized_tokens)
 
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
@@ -88,11 +91,11 @@ def cosine_similarity(a, b):
 class EmailHandler:
     def __init__(self, embedding_model: EmbeddingModel):
         self.embedding_model = embedding_model
-        self.sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+        self.sentiment_analyzer = SentimentIntensityAnalyzer()
 
     def retrieve_relevant_messages(self, user_prompt, memory):
         embeddings = self.embedding_model.get_embeddings()
-        user_prompt_embedding = ollama.embeddings(model='mxbai-embed-large', prompt=preprocess_text(user_prompt))['embedding']
+        user_prompt_embedding = ollama.embeddings(model='snowflake-arctic-embed', prompt=preprocess_text(user_prompt))['embedding']
 
         return [
             msg for i, msg in enumerate(memory.get_history())
@@ -143,34 +146,37 @@ class EmailHandler:
         text = soup.get_text()
         return re.sub(r'\s+', ' ', text).strip()
 
-    def chunk_text(self, text):
-        return sent_tokenize(text)
+    def chunk_text(self, text, chunk_size=4096):
+        sentences = sent_tokenize(text)
+        chunks = []
+        current_chunk = ""
+
+        for sentence in sentences:
+            if len(current_chunk) + len(sentence) <= chunk_size:
+                current_chunk += sentence + " "
+            else:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence + " "
+
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        return chunks
 
     def filter_chunks(self, chunks):
-        filtered_chunks = []
-
-        for chunk in chunks:
-            sentiment_result = self.sentiment_analyzer(chunk)[0]
-            if sentiment_result['score'] >= 0.5:
-                filtered_chunks.append(chunk)
-
-        return filtered_chunks
+        return [
+            chunk for chunk in chunks
+            if len(chunk) <= 1500 or self.sentiment_analyzer.polarity_scores(chunk)['compound'] >= 0.05
+        ]
 
     def clean_email_body(self, email_body):
         lines = email_body.split("\n")
         cleaned_lines = []
-        reply_found = False
 
         for line in lines:
             if line.startswith("From:") or line.startswith("Sent:") or line.startswith("To:") or line.startswith("Subject:"):
-                reply_found = True
-                continue
-            
-            if reply_found and line.strip() == "":
                 break
-
-            if not reply_found:
-                cleaned_lines.append(line)
+            cleaned_lines.append(line)
 
         return "\n".join(cleaned_lines).strip()
 
@@ -215,7 +221,7 @@ class EmailHandler:
                 client_name = self.get_client_name(email_from)
 
                 for chunk in filtered_chunks:
-                    user_prompt = f" {now}\n\nAs Chaos, analyze this email chunk and determine if it requires a response.\n\nSender: {email_from}\n\nClient Name: {client_name}\n\nEmail Content:\n{chunk}\n\nDoes this email require a response? Respond with only YES or NO."
+                    user_prompt = f" {now}\n\nAs Chaos, analyze this email chunk and determine if it requires a response.You will always respond to emails asking for help from you.You have RAG using embedding with NLP to find relevant info thats also attached.\n\nSender: {email_from}\n\nClient Name: {client_name}\n\nEmail Content:\n{chunk}\n\nDoes this email require a response? Respond with only YES or NO."
 
                     try:
                         response = self.chat_with_groq(SYSTEM_PROMPT, user_prompt)
@@ -231,14 +237,43 @@ class EmailHandler:
 
                             self.send_response_email(email_from, email_subject, response.content)
                         else:
-                            logging.info(f"No response required for email chunk from {email_from} with subject '{email_subject}'.")
-                            print(f"No response required for email chunk from {email_from} with subject '{email_subject}'.")
+                            user_prompt = f" {now}\n\nAs Chaos, analyze this email and figure out what tools may be needed, if none, just say none or leave a note with the note tool.\n\nSender: {email_from}\n\nClient Name: {client_name}\n\nEmail Content:\n{chunk}\n\n"
+                            tool_response = run_conversation(user_prompt)
+                            
+                            logging.info(f"No response required for email chunk from {email_from} with subject '{email_subject}'. tool response: {tool_response}")
+                            print(f"No response required for email chunk from {email_from} with subject '{email_subject}'.  tool response: {tool_response}")
 
                     except Exception as e:
                         logging.error(f"An error occurred while processing the email chunk: {str(e)}")
                         print(f"An error occurred while processing the email chunk: {str(e)}")
+                        # keep processing other chunks
+                        continue
 
     def send_response_email(self, email_from, email_subject, response_content):
+        '''
+        This method is used to send an auto-reply email to the sender of the original email.
+
+        It uses the SMTP server to send the email.
+
+        The method logs the email address to which the auto-reply is sent.
+
+        Args:
+
+
+        email_from (str): The email address of the sender of the original email.
+
+        email_subject (str): The subject of the original email.
+
+        response_content (str): The content of the auto-reply email.
+
+
+        
+        
+        
+        
+        
+        
+        '''
         smtp_server = smtplib.SMTP(SMTP_URL, SMTP_PORT)
         smtp_server.starttls()
         smtp_server.login(USER, APP_PASSWORD)
@@ -255,6 +290,22 @@ class EmailHandler:
         print(f"Auto-reply sent to: {email_from}")
 
     def handle_emails(self):
+        '''
+        This method is used to handle incoming emails and process them.
+
+        It connects to the IMAP server, fetches unread emails, processes them, and sends a response if required.
+
+        The method runs in an infinite loop and checks for new emails every 15 seconds.
+
+        If an error occurs while processing an email, the error is logged and the method continues to process other emails.
+
+        If no new emails are found, the method waits for 15 seconds before checking again.
+
+        The method uses the `process_email` method to process each email.
+
+
+        
+        '''
         parser = BytesParser(policy=policy.default)
 
         while True:
