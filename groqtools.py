@@ -17,7 +17,7 @@ def run_conversation(user_prompt):
     messages = [
         {
             "role": "system",
-            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos.  "
+            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations.  "
         },
         {
             "role": "user",
@@ -35,7 +35,7 @@ def run_conversation(user_prompt):
                     "properties": {
                         "subject": {
                             "type": "string",
-                            "description": "title of the appointment/subject section of the calendar event",
+                            "description": "title of the appointment/subject section of the calendar event with names of attendants.",
                         },
                         "start_time": {
                             "type": "string",
@@ -51,7 +51,7 @@ def run_conversation(user_prompt):
                         },
                         "body": {
                             "type": "string",
-                            "description": "description of the appointment",
+                            "description": "description of the appointment with the names of both parties included in the body",
                         },
                     },
                     "required": ["subject", "start_time", "end_time", "location", "body"],
@@ -79,7 +79,7 @@ def run_conversation(user_prompt):
             "type": "function",
             "function": {
                 "name": "write_note",
-                "description": "Write a note to the notes.txt file.",
+                "description": "Write a note to the notes.txt file. Whenenever important data is passed, you need to note it.",
                 "parameters": {
                     "type": "object",
                     "properties": {
