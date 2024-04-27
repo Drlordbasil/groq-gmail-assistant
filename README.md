@@ -77,7 +77,8 @@ By automating this end-to-end email management process, Chaos saves you time and
    - Update the `config.py` file with your Gmail email address and the generated App Password.
 
 2. **Customization**:
-   - You can customize the entire system or just the name/assistant name in the `config.py` file.
+   - You must rename the 'example.config.py' to 'config.py' for you local copy.
+   - You can customize the entire system or just the name/assistant name in the `example.config.py` file.
    - Modify the `SYSTEM_PROMPT` variable to adjust the assistant's behavior and personality.
 
 ## Usage
