@@ -38,16 +38,48 @@ logging.basicConfig(filename='gmail_assistant.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 class EmbeddingModel:
+    """
+    A class to manage the embedding generation process using a specified model from Ollama.
+
+    Attributes:
+        json_file_path (str): The file path to the JSON file containing the documents to be embedded.
+        model_name (str): The name of the embedding model used to generate embeddings.
+
+    Methods:
+        _load_documents(): Loads documents from the JSON file.
+        get_embeddings(): Generates and returns embeddings for each document.
+    """
+
     def __init__(self, json_file_path: str = 'conversation_memory.json', model_name: str = 'snowflake-arctic-embed'):
+        """
+        Initializes the EmbeddingModel with specified JSON file path and model name.
+
+        Parameters:
+            json_file_path (str): The file path to the JSON file containing the documents. Defaults to 'conversation_memory.json'.
+            model_name (str): The name of the model to use for generating embeddings. Defaults to 'snowflake-arctic-embed'.
+        """
         self.json_file_path = json_file_path
         self.model_name = model_name
 
     def _load_documents(self) -> list:
+        """
+        Private method to load documents from the specified JSON file.
+
+        Returns:
+            list: A list of documents loaded from the JSON file.
+        """
         with open(self.json_file_path, 'r') as file:
             return json.load(file)
 
     def get_embeddings(self) -> list:
+        """
+        Generates embeddings for each document loaded from the JSON file using the specified model.
+
+        Returns:
+            list: A list of embeddings for each document.
+        """
         documents = self._load_documents()
+        
         return [ollama.embeddings(model=self.model_name, prompt=doc['content'])['embedding'] for doc in documents]
 
 class ConversationMemory:
@@ -168,17 +200,29 @@ class EmailHandler:
             chunk for chunk in chunks
             if len(chunk) <= 1500 or self.sentiment_analyzer.polarity_scores(chunk)['compound'] >= 0.05
         ]
-
-    def clean_email_body(self, email_body):
+    def clean_email_body(self,email_body):
         lines = email_body.split("\n")
         cleaned_lines = []
+        capture = False
 
         for line in lines:
-            if line.startswith("From:") or line.startswith("Sent:") or line.startswith("To:") or line.startswith("Subject:"):
-                break
-            cleaned_lines.append(line)
+            # Check if the line contains any common email header starts
+            if "From:" in line or "Sent:" in line or "To:" in line or "Subject:" in line:
+                # When we encounter one of these headers after starting to capture, we stop.
+                if capture:
+                    break
+                continue
+            # Check if the line is a reply line or too short, indicating a header or break in content
+            if line.strip().startswith(">") or len(line.strip()) == 0:
+                continue
+            # Start capturing after the first non-header, non-reply line
+            capture = True
+            if capture:
+                cleaned_lines.append(line)
 
         return "\n".join(cleaned_lines).strip()
+
+
 
     def get_client_name(self, email_from):
         if '<' in email_from:
@@ -232,6 +276,10 @@ class EmailHandler:
                             print(f"Using tools to formulate a response...")
                             tool_response = run_conversation(user_prompt)
                             print(f"Tool response: {tool_response}")
+                            #save tool response to memory
+                            memory = ConversationMemory()
+                            memory.save_context("assistant", f"Tool response: {tool_response}\n\n")
+
                             response = self.chat_with_groq(SYSTEM_PROMPT, user_prompt + "\n" + tool_response)
                             print(f"Final response: {response.content}")
 
