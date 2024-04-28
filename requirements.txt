@@ -1,0 +1,9 @@
+selenium
+bs4
+nltk
+numpy
+langchain-core
+langchain-groq
+ollama
+webdriver-manager
+groq
