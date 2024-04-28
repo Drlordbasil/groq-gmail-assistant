@@ -17,7 +17,7 @@ def run_conversation(user_prompt):
     messages = [
         {
             "role": "system",
-            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations.  "
+            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations. If no tools are needed, simply reply NONE. You are not replying to the emails. You are just a tool using AI assistant where another AI controls the rest. "
         },
         {
             "role": "user",
