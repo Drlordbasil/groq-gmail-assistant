@@ -1,4 +1,6 @@
+STABLE VERSION IN RELEASE V1!!!
 
+Current version may have errors. 
 
 # Groq Gmail Assistant: AI-Enhanced Email Management
 
