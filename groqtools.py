@@ -1,29 +1,23 @@
 from groq import Groq
 import os
 import json
-
-from selenium.webdriver.support import expected_conditions as EC
-
-from tools_for_chaos import write_note, read_notes, create_calendar_appointment, web_browser,get_current_time_formatted
-
-
+from tools_for_chaos import write_note, read_notes, create_calendar_appointment, web_browser, create_image, image_to_text
+from memory import ConversationMemory
 client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 MODEL = 'llama3-70b-8192'
 
-
-
 def run_conversation(user_prompt):
-    # Step 1: send the conversation and available functions to the model
     messages = [
         {
             "role": "system",
-            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations. If no tools are needed, simply reply NONE. You are not replying to the emails. You are just a tool using AI assistant where another AI controls the rest. "
+            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations.  "
         },
         {
             "role": "user",
             "content": user_prompt,
         }
     ]
+
     tools = [
         {
             "type": "function",
@@ -103,7 +97,45 @@ def run_conversation(user_prompt):
                     "required": [],
                 },
             },
-        }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_image",
+                "description": "Create an image based on the given prompt and save it to the workspace directory.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The prompt to generate the image.",
+                        },
+                        "file_name": {
+                            "type": "string",
+                            "description": "The name of the file to save the generated image.",
+                        },
+                    },
+                    "required": ["prompt", "file_name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "image_to_text",
+                "description": "Convert an image file to text using the image captioning API.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "The path to the image file.",
+                        },
+                    },
+                    "required": ["file_path"],
+                },
+            },
+        },
     ]
 
     response = client.chat.completions.create(
@@ -111,7 +143,7 @@ def run_conversation(user_prompt):
         messages=messages,
         tools=tools,
         tool_choice="auto",
-        max_tokens=4096
+        max_tokens=1024
     )
 
     response_message = response.choices[0].message
@@ -119,17 +151,17 @@ def run_conversation(user_prompt):
 
     tool_calls = response_message.tool_calls
     print(tool_calls)
-    # Step 2: check if the model wanted to call a function
+
     if tool_calls:
-        # Step 3: call the function
         available_functions = {
             "create_calendar_appointment": create_calendar_appointment,
             "web_browser": web_browser,
             "write_note": write_note,
             "read_notes": read_notes,
+            "create_image": create_image,
+            "image_to_text": image_to_text,
         }
-        messages.append(response_message)  # extend conversation with assistant's reply
-        # Step 4: send the info for each function call and function response to the model
+        messages.append(response_message)
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_to_call = available_functions[function_name]
@@ -152,6 +184,16 @@ def run_conversation(user_prompt):
                 )
             elif function_name == "read_notes":
                 function_response = function_to_call()
+            elif function_name == "create_image":
+                function_response = function_to_call(
+                    prompt=function_args.get("prompt"),
+                    file_name=function_args.get("file_name")
+                )
+            elif function_name == "image_to_text":
+                function_response = function_to_call(
+                    file_path=function_args.get("file_path")
+                )
+
             messages.append(
                 {
                     "tool_call_id": tool_call.id,
@@ -159,10 +201,13 @@ def run_conversation(user_prompt):
                     "name": function_name,
                     "content": function_response,
                 }
-            )  # extend conversation with function response
+            )
+
+        relevant_messages = ConversationMemory().retrieve_relevant_messages(user_prompt, ConversationMemory())
         second_response = client.chat.completions.create(
             model=MODEL,
-            messages=messages
-        )  # get a new response from the model where it can see the function response
+            messages=relevant_messages + [response_message],
+            max_tokens=1024
+        )
         print(second_response.choices[0].message.content)
         return second_response.choices[0].message.content
