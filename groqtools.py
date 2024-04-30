@@ -1,23 +1,44 @@
 from groq import Groq
 import os
 import json
-from tools_for_chaos import write_note, read_notes, create_calendar_appointment, web_browser, create_image, image_to_text
-from memory import ConversationMemory
+
+from selenium.webdriver.support import expected_conditions as EC
+
+from tools_for_chaos import write_note, read_notes, create_calendar_appointment, web_browser, get_current_time_formatted, create_image, image_to_text
+
 client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 MODEL = 'llama3-70b-8192'
 
 def run_conversation(user_prompt):
+    # Step 1: send the conversation and available functions to the model
     messages = [
         {
             "role": "system",
-            "content": f" \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. You will adapt based on your current situations.  "
+            "content": f"""
+              \n\n\nYou are a function calling LLM(multimodel with optional tools) AI assistant named Chaos. 
+              You will adapt based on your current situations. 
+              If no tools are needed, simply reply NONE. You are not replying to the emails. 
+              You are just a tool using AI assistant where another AI controls the rest. 
+              You must never lie about tool outputs. 
+              You arent to do anything but use tools and return relevant data from your tools outputs to the next AI agent. 
+              You are an extension to chaos as his tool using AI tagteaming with him. 
+              if your tools fail, say it. If your tools return real data, be honest about it.  
+              ONLY AVAILABLE TOOLS ARE:
+                          "create_calendar_appointment" - it takes in subject, start_time, end_time, location, body as parameters and creates a calendar appointment in the local Windows 11 calendar for Anthony Snider. This must ONLY be used if requested.
+                            "web_browser" - it takes in a query as a parameter and performs a web search using Selenium and returns the relevant information/context from google. This isnt complete and can not return everything. Dont rely on this tool.
+                            "write_note" - it takes in content as a parameter and writes a note to the notes.txt file. Whenever important data is passed, you need to note it.
+                            "read_notes" - reads notes from the notes.txt file.
+                            "get_current_time_formatted" - gets the current time in the format 'YYYY-MM-DD HH:MM:SS'.
+                            "create_image"  - it takes in a prompt as a parameter and creates an image using stable diffusion model. No real usage yet.
+                            "image_to_text" - it takes in a file_path as a parameter and converts an image to text using OCR. No real usage yet.
+                            You will never lie about tool responses.
+              """
         },
         {
             "role": "user",
             "content": user_prompt,
         }
     ]
-
     tools = [
         {
             "type": "function",
@@ -101,8 +122,20 @@ def run_conversation(user_prompt):
         {
             "type": "function",
             "function": {
+                "name": "get_current_time_formatted",
+                "description": "Get the current time in the format 'YYYY-MM-DD HH:MM:SS'.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "create_image",
-                "description": "Create an image based on the given prompt and save it to the workspace directory.",
+                "description": "Create an image using stable diffusion model.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -112,7 +145,7 @@ def run_conversation(user_prompt):
                         },
                         "file_name": {
                             "type": "string",
-                            "description": "The name of the file to save the generated image.",
+                            "description": "The file name to save the generated image.",
                         },
                     },
                     "required": ["prompt", "file_name"],
@@ -123,19 +156,22 @@ def run_conversation(user_prompt):
             "type": "function",
             "function": {
                 "name": "image_to_text",
-                "description": "Convert an image file to text using the image captioning API.",
+                "description": "Convert an image to text using OCR.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "file_path": {
                             "type": "string",
-                            "description": "The path to the image file.",
+                            "description": "The path to the image file to convert to text.",
                         },
                     },
                     "required": ["file_path"],
                 },
             },
         },
+        {
+         # Add the new function to the tools list
+        }
     ]
 
     response = client.chat.completions.create(
@@ -143,7 +179,7 @@ def run_conversation(user_prompt):
         messages=messages,
         tools=tools,
         tool_choice="auto",
-        max_tokens=1024
+        max_tokens=4096
     )
 
     response_message = response.choices[0].message
@@ -151,17 +187,20 @@ def run_conversation(user_prompt):
 
     tool_calls = response_message.tool_calls
     print(tool_calls)
-
+    # Step 2: check if the model wanted to call a function
     if tool_calls:
+        # Step 3: call the function
         available_functions = {
             "create_calendar_appointment": create_calendar_appointment,
             "web_browser": web_browser,
             "write_note": write_note,
             "read_notes": read_notes,
+            "get_current_time_formatted": get_current_time_formatted,
             "create_image": create_image,
             "image_to_text": image_to_text,
         }
-        messages.append(response_message)
+        messages.append(response_message)  # extend conversation with assistant's reply
+        # Step 4: send the info for each function call and function response to the model
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_to_call = available_functions[function_name]
@@ -184,6 +223,8 @@ def run_conversation(user_prompt):
                 )
             elif function_name == "read_notes":
                 function_response = function_to_call()
+            elif function_name == "get_current_time_formatted":
+                function_response = function_to_call()
             elif function_name == "create_image":
                 function_response = function_to_call(
                     prompt=function_args.get("prompt"),
@@ -193,7 +234,6 @@ def run_conversation(user_prompt):
                 function_response = function_to_call(
                     file_path=function_args.get("file_path")
                 )
-
             messages.append(
                 {
                     "tool_call_id": tool_call.id,
@@ -201,13 +241,10 @@ def run_conversation(user_prompt):
                     "name": function_name,
                     "content": function_response,
                 }
-            )
-
-        relevant_messages = ConversationMemory().retrieve_relevant_messages(user_prompt, ConversationMemory())
+            )  # extend conversation with function response
         second_response = client.chat.completions.create(
             model=MODEL,
-            messages=relevant_messages + [response_message],
-            max_tokens=1024
-        )
+            messages=messages
+        )  # get a new response from the model where it can see the function response
         print(second_response.choices[0].message.content)
         return second_response.choices[0].message.content
