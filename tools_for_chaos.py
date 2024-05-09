@@ -9,13 +9,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime
-import requests
-import io
-from PIL import Image
-
-API_URL_IMAGE_GEN = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-API_URL_IMAGE_CAPTION = "https://api-inference.huggingface.co/models/nlpconnect/vit-gpt2-image-captioning"
-headers = {"Authorization": "Bearer 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"}
 
 def get_current_time_formatted():
     # Get the current date and time
@@ -26,31 +19,6 @@ def get_current_time_formatted():
 
     return f"{time_string} is the current date and time"
 
-def create_image(prompt, file_name):
-    payload = {
-        "inputs": prompt,
-    }
-
-    response = requests.post(API_URL_IMAGE_GEN, headers=headers, json=payload)
-    image_bytes = response.content
-
-    image = Image.open(io.BytesIO(image_bytes))
-    file_path = os.path.join("workspace", file_name)
-    image.save(file_path)
-
-    return file_path
-
-def image_to_text(file_path):
-    with open(file_path, "rb") as f:
-        data = f.read()
-
-    response = requests.post(API_URL_IMAGE_CAPTION, headers=headers, data=data)
-    result = response.json()
-
-    if "error" in result:
-        return f"Error: {result['error']}"
-    else:
-        return result[0]["generated_text"]
 
 def write_note(content):
     """Write a note to the notes.txt file."""
