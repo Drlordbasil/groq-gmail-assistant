@@ -1,5 +1,5 @@
 ![GitHub stars](https://img.shields.io/github/stars/Drlordbasil/groq-gmail-assistant?style=social&label=Star)
-
+UPDATES COMING JAN 2025 OR SOONER!
 # Groq Gmail Assistant: AI-Powered Email Management
 
 Manage your emails efficiently and intelligently with Groq Gmail Assistant, an AI-driven tool designed to automate and enhance your email interactions using the latest advancements in AI technology.
